@@ -1,0 +1,127 @@
+## CODE 2:
+
+import org.json.JSONObject;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.math.BigInteger;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        try {
+            // Reading the first test case
+            String testcase1Content = new String(Files.readAllBytes(Paths.get("src/testcase1.json")));
+            // Reading the second test case
+            String testcase2Content = new String(Files.readAllBytes(Paths.get("src/testcase2.json")));
+
+            System.out.println("Testcase 1:");
+            findSecretAndWrongPoints(testcase1Content);
+
+            System.out.println("\nTestcase 2:");
+            findSecretAndWrongPoints(testcase2Content);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void findSecretAndWrongPoints(String content) {
+        try {
+            // Parse JSON content
+            JSONObject jsonObject = new JSONObject(content);
+
+            // Extract number of roots (n) and minimum roots required (k)
+            JSONObject keys = jsonObject.getJSONObject("keys");
+            int n = keys.getInt("n");
+            int k = keys.getInt("k");
+
+            System.out.println("Number of roots (n): " + n);
+            System.out.println("Minimum number of roots required (k): " + k);
+
+            // Store points (x, y)
+            Map<Integer, BigInteger> points = new HashMap<>();
+
+            // Loop through each root
+            for (int i = 1; i <= n; i++) {
+                if (jsonObject.has(String.valueOf(i))) {
+                    JSONObject point = jsonObject.getJSONObject(String.valueOf(i));
+                    int base = Integer.parseInt(point.getString("base"));
+                    String value = point.getString("value");
+
+                    // Decode the y value using BigInteger to handle large numbers
+                    BigInteger decodedValue = new BigInteger(value, base);
+                    points.put(i, decodedValue);
+                    System.out.println("Point " + i + ": x = " + i + ", y = " + decodedValue);
+                }
+            }
+
+            // Calculate the constant term using Lagrange interpolation
+            BigInteger constant = calculateConstant(points, k);
+            System.out.println("Secret (constant term 'c'): " + constant);
+
+            // Identify wrong points (for the second test case)
+            List<Integer> wrongPoints = findWrongPoints(points, k);
+            if (wrongPoints.isEmpty()) {
+                System.out.println("No wrong points found.");
+            } else {
+                System.out.println("Wrong points: " + wrongPoints);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static BigInteger calculateConstant(Map<Integer, BigInteger> points, int k) {
+        // Use Lagrange interpolation to calculate the constant term (f(0))
+        BigInteger result = BigInteger.ZERO;
+
+        // Loop over the first k points (or choose any k points)
+        for (Map.Entry<Integer, BigInteger> entry1 : points.entrySet()) {
+            int xj = entry1.getKey();
+            BigInteger yj = entry1.getValue();
+
+            BigInteger term = yj;  // Initialize the term with yj
+
+            // Calculate the Lagrange basis polynomial for this term
+            for (Map.Entry<Integer, BigInteger> entry2 : points.entrySet()) {
+                int xm = entry2.getKey();
+                if (xj != xm) {
+                    term = term.multiply(BigInteger.ZERO.subtract(BigInteger.valueOf(xm)))  // Multiply by (0 - xm)
+                            .divide(BigInteger.valueOf(xj - xm));  // Divide by (xj - xm)
+                }
+            }
+
+            result = result.add(term);  // Sum up all terms
+        }
+
+        return result;  // This should give us the constant term (f(0))
+    }
+
+    private static List<Integer> findWrongPoints(Map<Integer, BigInteger> points, int k) {
+        List<Integer> wrongPoints = new ArrayList<>();
+
+        // Build polynomial with minimum k points, then check the rest
+        Map<Integer, BigInteger> correctPoints = new HashMap<>();
+        int i = 0;
+        for (Map.Entry<Integer, BigInteger> entry : points.entrySet()) {
+            if (i < k) {
+                correctPoints.put(entry.getKey(), entry.getValue());
+            } else {
+                // Check if remaining points satisfy the polynomial
+                if (!isPointOnCurve(correctPoints, entry.getKey(), entry.getValue())) {
+                    wrongPoints.add(entry.getKey());
+                }
+            }
+            i++;
+        }
+
+        return wrongPoints;
+    }
+
+    private static boolean isPointOnCurve(Map<Integer, BigInteger> correctPoints, int x, BigInteger y) {
+        // Placeholder logic: Check if the point lies on the polynomial defined by correctPoints
+        // In actual implementation, this should check if f(x) = y holds for the polynomial constructed from correctPoints
+        return true;  // This is a placeholder; implement the correct check
+    }
+}
